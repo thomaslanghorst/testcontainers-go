@@ -29,6 +29,7 @@ type MongoDBContainerRequest struct {
 	Database string
 }
 
+// MongoDBContainer should always be created via NewMongoDBContainer
 type MongoDBContainer struct {
 	Container testcontainers.Container
 	client    *mongo.Client
