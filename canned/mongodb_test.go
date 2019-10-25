@@ -11,21 +11,21 @@ import (
 func TestInsertDocument(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := MongoDbContainer(ctx, MongoDbContainerRequest{})
+	c, err := NewMongoDBContainer(ctx, MongoDBContainerRequest{})
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
 	defer c.Container.Terminate(ctx)
 
-	mongoClient, err := c.GetDriver()
+	mongoClient, err := c.GetClient(ctx)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
 	collection := mongoClient.Database("testdatabase").Collection("persons")
 
-	result, err := collection.InsertOne(context.TODO(), bson.D{primitive.E{Key: "name", Value: "John Doe"}})
+	result, err := collection.InsertOne(ctx, bson.D{primitive.E{Key: "name", Value: "John Doe"}})
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -34,7 +34,7 @@ func TestInsertDocument(t *testing.T) {
 		t.Fatal("Insert failed")
 	}
 
-	mongoClient.Disconnect(context.TODO())
+	mongoClient.Disconnect(ctx)
 
 	if err != nil {
 		t.Fatal(err.Error())
@@ -46,7 +46,7 @@ func TestInsertDocumentWithMongoDbContainerRequestParameters(t *testing.T) {
 
 	testDbName := "testdb"
 
-	c, err := MongoDbContainer(ctx, MongoDbContainerRequest{
+	c, err := NewMongoDBContainer(ctx, MongoDBContainerRequest{
 		Database: testDbName,
 		User:     "top",
 		Password: "secret",
@@ -54,14 +54,14 @@ func TestInsertDocumentWithMongoDbContainerRequestParameters(t *testing.T) {
 
 	defer c.Container.Terminate(ctx)
 
-	mongoClient, err := c.GetDriver()
+	mongoClient, err := c.GetClient(ctx)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
 	collection := mongoClient.Database(testDbName).Collection("persons")
 
-	result, err := collection.InsertOne(context.TODO(), bson.D{primitive.E{Key: "name", Value: "John Doe"}})
+	result, err := collection.InsertOne(ctx, bson.D{primitive.E{Key: "name", Value: "John Doe"}})
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -70,7 +70,7 @@ func TestInsertDocumentWithMongoDbContainerRequestParameters(t *testing.T) {
 		t.Fatal("Insert failed")
 	}
 
-	mongoClient.Disconnect(context.TODO())
+	mongoClient.Disconnect(ctx)
 
 	if err != nil {
 		t.Fatal(err.Error())

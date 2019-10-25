@@ -13,46 +13,39 @@ import (
 )
 
 const (
-	defaultUser     = "user"
-	defaultPassword = "password"
-	defaultDatabase = "database"
-	defaultImage    = "mongo"
-	defaultTag      = "4.2.0"
+	mongoUser       = "user"
+	mongoPassword   = "password"
+	mongoDatabase   = "database"
+	mongoImage      = "mongo"
+	mongoDefaultTag = "4.2.0"
+	mongoPort       = "27017/tcp"
 )
 
-// MongoDbContainerRequest represents the parameters for requesting a running MongoDb container
-type MongoDbContainerRequest struct {
+// MongoDBContainerRequest represents the parameters for requesting a running MongoDB container
+type MongoDBContainerRequest struct {
 	testcontainers.GenericContainerRequest
 	User     string
 	Password string
 	Database string
 }
 
-type mongodbContainer struct {
+type MongoDBContainer struct {
 	Container testcontainers.Container
 	client    *mongo.Client
-	req       MongoDbContainerRequest
-	ctx       context.Context
+	req       MongoDBContainerRequest
 }
 
-func (c *mongodbContainer) GetDriver() (*mongo.Client, error) {
+// GetClient returns a *mongo.Client.
+func (c *MongoDBContainer) GetClient(ctx context.Context) (*mongo.Client, error) {
 
-	host, err := c.Container.Host(c.ctx)
+	host, err := c.Container.Host(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	port, err := c.Container.MappedPort(c.ctx, "27017/tcp")
+	mappedPort, err := c.Container.MappedPort(ctx, mongoPort)
 	if err != nil {
 		return nil, err
-	}
-
-	if c.req.User == "" {
-		c.req.Password = defaultUser
-	}
-
-	if c.req.Password == "" {
-		c.req.Password = defaultPassword
 	}
 
 	clientOptions := options.Client().ApplyURI(fmt.Sprintf(
@@ -60,16 +53,11 @@ func (c *mongodbContainer) GetDriver() (*mongo.Client, error) {
 		c.req.User,
 		c.req.Password,
 		host,
-		port.Int(),
+		mappedPort.Int(),
 	))
 
-	client, err := mongo.Connect(context.TODO(), clientOptions)
+	client, err := mongo.Connect(ctx, clientOptions)
 
-	if err != nil {
-		return nil, err
-	}
-
-	err = client.Ping(context.TODO(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -77,32 +65,32 @@ func (c *mongodbContainer) GetDriver() (*mongo.Client, error) {
 	return client, nil
 }
 
-// MongoDbContainer represents the running container instance.
-func MongoDbContainer(ctx context.Context, req MongoDbContainerRequest) (*mongodbContainer, error) {
+// NewMongoDBContainer represents the running container instance.
+func NewMongoDBContainer(ctx context.Context, req MongoDBContainerRequest) (*MongoDBContainer, error) {
 
 	provider, err := req.ProviderType.GetProvider()
 	if err != nil {
 		return nil, err
 	}
 
-	req.ExposedPorts = []string{"27017/tcp"}
+	req.ExposedPorts = []string{mongoPort}
 	req.Env = map[string]string{}
 	req.Started = true
 
-	if req.Image == "" {
-		req.Image = fmt.Sprintf("%s:%s", defaultImage, defaultTag)
+	if req.Image == "" && req.FromDockerfile.Context == "" {
+		req.Image = fmt.Sprintf("%s:%s", mongoImage, mongoDefaultTag)
 	}
 
 	if req.User == "" {
-		req.User = defaultUser
+		req.User = mongoUser
 	}
 
 	if req.Password == "" {
-		req.Password = defaultPassword
+		req.Password = mongoPassword
 	}
 
 	if req.Database == "" {
-		req.Database = defaultDatabase
+		req.Database = mongoDatabase
 	}
 
 	req.Env["MONGO_INITDB_ROOT_USERNAME"] = req.User
@@ -116,18 +104,17 @@ func MongoDbContainer(ctx context.Context, req MongoDbContainerRequest) (*mongod
 		return nil, errors.Wrap(err, "failed to create container")
 	}
 
-	mongoDbC := &mongodbContainer{
+	mongoC := &MongoDBContainer{
 		Container: c,
 		req:       req,
-		ctx:       ctx,
 	}
 
 	if req.Started {
 		if err := c.Start(ctx); err != nil {
-			return mongoDbC, errors.Wrap(err, "failed to start container")
+			return mongoC, errors.Wrap(err, "failed to start container")
 		}
 	}
 
-	return mongoDbC, nil
+	return mongoC, nil
 
 }
